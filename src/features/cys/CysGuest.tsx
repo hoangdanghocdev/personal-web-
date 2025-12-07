@@ -1,9 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Calendar, Clock, CheckCircle2, AlertCircle, CalendarDays, Loader2, ArrowRight } from 'lucide-react';
-import { RequestCYS, REASONS, SPORT_TYPES } from './types';
+import { Clock, CheckCircle2, AlertCircle, CalendarDays, Loader2, ArrowRight, Calendar, Send, Briefcase, Palmtree, Home, HelpCircle, UserCheck, MessageCircle, Coffee } from 'lucide-react';
+import { RequestCYS } from './types';
 import { UserAction } from '../../shared/types';
 import { STORAGE_KEYS, getStorage, setStorage, generateId } from '../../shared/utils';
-import LocationPicker from './LocationPicker';
+import LeafletLocationPicker from './LeafletLocationPicker';
+import PurposeSelect, { PurposeOption } from './PurposeSelect';
+
+// --- CONSTANTS FOR REASONS ---
+
+const MULTI_DAY_REASONS: PurposeOption[] = [
+  { id: 'Business Trip', label: 'Business Trip', icon: Briefcase, color: 'text-blue-600', bg: 'bg-blue-50' },
+  { id: 'Personal Vacation', label: 'Personal Vacation', icon: Palmtree, color: 'text-orange-500', bg: 'bg-orange-50' },
+  { id: 'Family Visit', label: 'Family Visit', icon: Home, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { id: 'Other', label: 'Other', icon: HelpCircle, color: 'text-slate-500', bg: 'bg-slate-100' },
+];
+
+// UPDATED: Rich Options for In-Day Events with Specific Icons
+const IN_DAY_REASONS: PurposeOption[] = [
+  { id: 'Work Interview', label: 'Job Interview', icon: Briefcase, color: 'text-purple-600', bg: 'bg-purple-50' },
+  { id: 'Casual Meeting', label: 'Casual Meeting', icon: MessageCircle, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { id: 'Coffee Chat', label: 'Coffee Chat', icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-50' },
+  { id: 'Other', label: 'Other', icon: HelpCircle, color: 'text-slate-500', bg: 'bg-slate-100' },
+];
 
 interface CysGuestProps {
   reqStartDate: string;
@@ -32,14 +50,21 @@ const CysGuest: React.FC<CysGuestProps> = ({
   const [reqName, setReqName] = useState('');
   const [reqContact, setReqContact] = useState('');
   const [reqPlatform, setReqPlatform] = useState('');
-  const [reqReason, setReqReason] = useState('Work Interview');
-  const [reqSubReason, setReqSubReason] = useState('Football');
+  const [reqReason, setReqReason] = useState(''); 
   const [reqOther, setReqOther] = useState('');
   const [reqLocation, setReqLocation] = useState('');
   
   // Real-time Status State
   const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'available' | 'busy' | 'invalid'>('idle');
   const [statusMsg, setStatusMsg] = useState('');
+
+  // Switch Reasons based on type
+  const currentReasons = isMultiDay ? MULTI_DAY_REASONS : IN_DAY_REASONS;
+
+  // Reset reason when mode changes
+  useEffect(() => {
+    setReqReason('');
+  }, [isMultiDay]);
 
   // --- REAL-TIME CHECKING EFFECT ---
   useEffect(() => {
@@ -105,6 +130,10 @@ const CysGuest: React.FC<CysGuestProps> = ({
     e.preventDefault();
 
     if (checkStatus !== 'available') return;
+    if (!reqReason) {
+        alert("Please select a purpose.");
+        return;
+    }
 
     // Spam Check
     const now = Date.now();
@@ -120,8 +149,9 @@ const CysGuest: React.FC<CysGuestProps> = ({
     const newReq: RequestCYS = {
       id: generateId(),
       name: reqName, contact: reqContact, contactPlatform: reqPlatform,
-      reason: reqReason, subReason: reqReason === 'Sports' ? reqSubReason : undefined,
-      otherDetail: (reqReason === 'Other' || reqSubReason === 'Other') ? reqOther : undefined,
+      reason: reqReason, 
+      subReason: undefined, 
+      otherDetail: reqReason === 'Other' ? reqOther : undefined,
       location: reqLocation,
       isMultiDay,
       startDate: reqStartDate,
@@ -134,7 +164,7 @@ const CysGuest: React.FC<CysGuestProps> = ({
     setStorage(STORAGE_KEYS.REQUESTS, [...requests, newReq]);
     
     alert('Request sent successfully!');
-    setReqName(''); setReqContact(''); setReqLocation(''); 
+    setReqName(''); setReqContact(''); setReqLocation(''); setReqReason('');
     setCheckStatus('idle');
   };
 
@@ -290,50 +320,42 @@ const CysGuest: React.FC<CysGuestProps> = ({
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                     <label className="text-xs font-bold text-slate-700">Full Name <span className="text-red-500">*</span></label>
-                     <input required placeholder="Your Name" value={reqName} onChange={e => setReqName(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all" />
+                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Full Name <span className="text-red-500">*</span></label>
+                     <input required placeholder="Your Name" value={reqName} onChange={e => setReqName(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all font-medium text-slate-800" />
                 </div>
                 <div className="space-y-2">
-                     <label className="text-xs font-bold text-slate-700">Phone / Contact <span className="text-red-500">*</span></label>
-                     <input required placeholder="Phone number" value={reqContact} onChange={e => setReqContact(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all" />
+                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone / Contact <span className="text-red-500">*</span></label>
+                     <input required placeholder="Phone number" value={reqContact} onChange={e => setReqContact(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all font-medium text-slate-800" />
                 </div>
             </div>
             
             <div className="space-y-2">
-                 <label className="text-xs font-bold text-slate-700">Contact Platform (e.g. Messenger/Zalo Link)</label>
-                 <input placeholder="https://..." value={reqPlatform} onChange={e => setReqPlatform(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all" />
+                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Contact Platform</label>
+                 <input placeholder="e.g. Messenger Link, Zalo..." value={reqPlatform} onChange={e => setReqPlatform(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all font-medium text-slate-800" />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700">Purpose</label>
-                    <div className="relative">
-                        <select value={reqReason} onChange={e => setReqReason(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all appearance-none">
-                            {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">▼</div>
-                    </div>
+            {/* PURPOSE - High Z-Index relative to parent to overlap Location if needed, but Modal has 9999 */}
+            <div className="space-y-2 relative z-20"> 
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Purpose</label>
+                <PurposeSelect 
+                    value={reqReason} 
+                    onChange={setReqReason} 
+                    options={currentReasons}
+                    placeholder={isMultiDay ? "Select Multi-day Reason..." : "Select In-day Reason..."}
+                />
+            </div>
+            
+            {reqReason === 'Other' && (
+                <div className="space-y-2 animate-fade-in relative z-10">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Specific Details</label>
+                    <input placeholder="Please specify..." value={reqOther} onChange={e => setReqOther(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 font-medium text-slate-800" required />
                 </div>
-                {reqReason === 'Sports' && (
-                    <div className="space-y-2 animate-fade-in">
-                        <label className="text-xs font-bold text-slate-700">Sport Type</label>
-                        <div className="relative">
-                            <select value={reqSubReason} onChange={e => setReqSubReason(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all appearance-none">
-                                {SPORT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">▼</div>
-                        </div>
-                    </div>
-                )}
-            </div>
-            
-            {(reqReason === 'Other' || (reqReason === 'Sports' && reqSubReason === 'Other')) && (
-                <input placeholder="Please specify details..." value={reqOther} onChange={e => setReqOther(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 animate-fade-in" required />
             )}
 
-            <div className="space-y-2">
-                 <label className="text-xs font-bold text-slate-700">Location</label>
-                 <LocationPicker value={reqLocation} onChange={setReqLocation} />
+            {/* LOCATION - Base Z-Index */}
+            <div className="space-y-2 relative z-0"> 
+                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Location</label>
+                 <LeafletLocationPicker value={reqLocation} onChange={setReqLocation} />
             </div>
 
             <button 
